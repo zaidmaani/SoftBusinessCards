@@ -13,6 +13,10 @@ using System.Formats.Asn1;
 using System.Globalization;
 using System.Xml.Linq;
 using CsvHelper;
+using ZXing;
+using System.Drawing;
+using Newtonsoft.Json;
+using ZXing.Common;
 
 namespace BusinessCardAPI.Controllers
 {
@@ -129,7 +133,7 @@ namespace BusinessCardAPI.Controllers
                             Photo = (string)x.Element("Photo")
                         }).ToList();
                     businessCards.AddRange(records);
-                }              
+                }
                 _context.BusinessCards.AddRange(businessCards);
                 await _context.SaveChangesAsync();
 
@@ -141,6 +145,66 @@ namespace BusinessCardAPI.Controllers
                 return StatusCode(500, "Internal server error");
             }
         }
-        //============================================================================//      
+        //============================================================================//
+        // Filtering method (by name, gender, etc.)
+        [HttpGet("Filter")]
+        public async Task<IActionResult> FilterBusinessCards(
+       [FromQuery] string? name,
+       [FromQuery] string? gender,
+       [FromQuery] DateTime? dateOfBirth,
+       [FromQuery] string? email,
+       [FromQuery] string? phone,
+       [FromQuery] string? address,
+       [FromQuery] DateTime? createdAt)
+        {
+            try
+            {
+                var query = _context.BusinessCards.AsQueryable();
+
+                if (!string.IsNullOrEmpty(name))
+                {
+                    query = query.Where(c => c.Name.ToLower().Contains(name.ToLower()));
+                }
+
+                if (!string.IsNullOrEmpty(gender))
+                {
+                    query = query.Where(c => c.Gender.ToLower().Contains(gender.ToLower()));
+                }
+
+                if (dateOfBirth.HasValue)
+                {
+                    query = query.Where(c => c.DateOfBirth.Date == dateOfBirth.Value.Date);
+                }
+
+                if (!string.IsNullOrEmpty(email))
+                {
+                    query = query.Where(c => c.Email.ToLower().Contains(email.ToLower()));
+                }
+
+                if (!string.IsNullOrEmpty(phone))
+                {
+                    query = query.Where(c => c.Phone.Contains(phone));
+                }
+
+                if (!string.IsNullOrEmpty(address))
+                {
+                    query = query.Where(c => c.Address.ToLower().Contains(address.ToLower()));
+                }
+
+                if (createdAt.HasValue)
+                {
+                    query = query.Where(c => c.CreatedAt.Date == createdAt.Value.Date);
+                }
+
+                var filteredCards = await query.ToListAsync();
+                return Ok(filteredCards);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while filtering business cards.");
+                return StatusCode(500, "Internal server error");
+            }
+        }
+
     }
 }
