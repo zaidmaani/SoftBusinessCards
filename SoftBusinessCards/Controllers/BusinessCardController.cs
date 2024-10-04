@@ -1,22 +1,12 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using SoftBusinessCards.Models;
 using SoftBusinessCards.Data;
-using System;
-using System.IO;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using SoftBusinessCards.Data;
-using SoftBusinessCards.Models;
 using Microsoft.EntityFrameworkCore;
-using System.Formats.Asn1;
 using System.Globalization;
 using System.Xml.Linq;
 using CsvHelper;
-using ZXing;
 using System.Drawing;
-using Newtonsoft.Json;
-using ZXing.Common;
+using Aspose.BarCode.BarCodeRecognition;
 
 namespace BusinessCardAPI.Controllers
 {
@@ -33,8 +23,8 @@ namespace BusinessCardAPI.Controllers
             _logger = logger;
         }
 
-        // Method to create a new business card 
-        [HttpPost("create")]
+
+        [HttpPost("Create")]
         public async Task<IActionResult> CreateBusinessCard([FromBody] BusinessCard card)
         {
             try
@@ -49,13 +39,14 @@ namespace BusinessCardAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while creating business card.");
+                var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+                _logger.LogError(ex, "Error occurred while creating business card. IP: {IpAddress}, Exception: {Exception}", ipAddress, ex.Message);
                 return StatusCode(500, "Internal server error");
             }
         }
         //============================================================================//
-        // Method to view all business cards
-        [HttpGet("view")]
+
+        [HttpGet("View")]
         public async Task<IActionResult> ViewBusinessCards()
         {
             try
@@ -65,12 +56,13 @@ namespace BusinessCardAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while fetching business cards.");
+                var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+                _logger.LogError(ex, "Error occurred while creating business card. IP: {IpAddress}, Exception: {Exception}", ipAddress, ex.Message);
                 return StatusCode(500, "Internal server error");
             }
         }
         //============================================================================//
-        // Method to delete a business card
+
         [HttpDelete("DeleteBusinessCards")]
         public async Task<IActionResult> DeleteBusinessCard(int id)
         {
@@ -85,23 +77,24 @@ namespace BusinessCardAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while deleting the business card.");
+                var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+                _logger.LogError(ex, "Error occurred while creating business card. IP: {IpAddress}, Exception: {Exception}", ipAddress, ex.Message);
                 return StatusCode(500, "Internal server error");
             }
         }
         //============================================================================//
-        // Method to create business card via file import (XML or CSV)
-        [HttpPost("createFromFile")]
+
+        [HttpPost("CreateFromFile")]
         public async Task<IActionResult> CreateBusinessCardFromFile(IFormFile file)
         {
             try
             {
                 if (file == null || file.Length == 0)
-                    return BadRequest("File is empty.");
+                    return BadRequest("File is empty");
 
                 string extension = Path.GetExtension(file.FileName);
                 if (extension != ".xml" && extension != ".csv")
-                    return BadRequest("Unsupported file format.");
+                    return BadRequest("Unsupported file format");
 
                 List<BusinessCard> businessCards = new List<BusinessCard>();
 
@@ -137,63 +130,123 @@ namespace BusinessCardAPI.Controllers
                 _context.BusinessCards.AddRange(businessCards);
                 await _context.SaveChangesAsync();
 
-                return Ok($"Successfully processed and saved {businessCards.Count} business card(s) from the file.");
+                return Ok(businessCards);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while processing the file.");
+                var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+                _logger.LogError(ex, "Error occurred while creating business card. IP: {IpAddress}, Exception: {Exception}", ipAddress, ex.Message);
                 return StatusCode(500, "Internal server error");
             }
         }
         //============================================================================//
-        // Filtering method (by name, gender, etc.)
+
+        [HttpPost("ExtractFromQRCode")]
+        public async Task<IActionResult> ExtractBusinessCardFromQRCode(IFormFile qrCodeImage)
+        {
+            try
+            {
+                if (qrCodeImage == null || qrCodeImage.Length == 0)
+                    return BadRequest("Please upload a valid QR code image");
+
+                using (var stream = new MemoryStream())
+                {
+                    await qrCodeImage.CopyToAsync(stream);
+
+                    var bitmap = new Bitmap(stream);
+
+                    using (var tempStream = new MemoryStream())
+                    {
+                        bitmap.Save(tempStream, System.Drawing.Imaging.ImageFormat.Png);
+                        tempStream.Position = 0;
+
+                        using (BarCodeReader reader = new BarCodeReader(tempStream, DecodeType.QR))
+                        {
+                            var qrCodes = reader.ReadBarCodes();
+                            if (qrCodes.Length == 0)
+                                return BadRequest("Unable to decode the QR code");
+
+                            List<BusinessCard> businessCards = new List<BusinessCard>();
+
+                            foreach (var qrCode in qrCodes)
+                            {
+                                var data = qrCode.CodeText.Split(';');
+                                if (data.Length != 8)
+                                    return BadRequest("Invalid data format in QR code");
+
+                                var businessCard = new BusinessCard
+                                {
+                                    Id = int.Parse(data[0]),
+                                    Name = data[1],
+                                    Gender = data[2],
+                                    DateOfBirth = DateTime.Parse(data[3]),
+                                    Email = data[4],
+                                    Phone = data[5],
+                                    Address = data[6],
+                                    Photo = data[7],
+                                    CreatedAt = DateTime.Now
+                                };
+
+                                businessCards.Add(businessCard);
+                            }
+
+                            _context.BusinessCards.AddRange(businessCards);
+                            await _context.SaveChangesAsync();
+
+                            return Ok(businessCards);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+                _logger.LogError(ex, "Error occurred while extracting business card from QR code. IP: {IpAddress}, Exception: {Exception}", ipAddress, ex.Message);
+                return StatusCode(500, "Internal server error");
+            }
+        }
+        //==============================================================================//
+
         [HttpGet("Filter")]
-        public async Task<IActionResult> FilterBusinessCards(
-       [FromQuery] string? name,
-       [FromQuery] string? gender,
-       [FromQuery] DateTime? dateOfBirth,
-       [FromQuery] string? email,
-       [FromQuery] string? phone,
-       [FromQuery] string? address,
-       [FromQuery] DateTime? createdAt)
+        public async Task<IActionResult> FilterBusinessCards([FromQuery] BusinessCardFilter filter)
         {
             try
             {
                 var query = _context.BusinessCards.AsQueryable();
 
-                if (!string.IsNullOrEmpty(name))
+                if (!string.IsNullOrEmpty(filter.Name))
                 {
-                    query = query.Where(c => c.Name.ToLower().Contains(name.ToLower()));
+                    query = query.Where(c => c.Name.ToLower().Contains(filter.Name.ToLower()));
                 }
 
-                if (!string.IsNullOrEmpty(gender))
+                if (!string.IsNullOrEmpty(filter.Gender))
                 {
-                    query = query.Where(c => c.Gender.ToLower().Contains(gender.ToLower()));
+                    query = query.Where(c => c.Gender.ToLower().Contains(filter.Gender.ToLower()));
                 }
 
-                if (dateOfBirth.HasValue)
+                if (filter.DateOfBirth.HasValue)
                 {
-                    query = query.Where(c => c.DateOfBirth.Date == dateOfBirth.Value.Date);
+                    query = query.Where(c => c.DateOfBirth.Date == filter.DateOfBirth.Value.Date);
                 }
 
-                if (!string.IsNullOrEmpty(email))
+                if (!string.IsNullOrEmpty(filter.Email))
                 {
-                    query = query.Where(c => c.Email.ToLower().Contains(email.ToLower()));
+                    query = query.Where(c => c.Email.ToLower().Contains(filter.Email.ToLower()));
                 }
 
-                if (!string.IsNullOrEmpty(phone))
+                if (!string.IsNullOrEmpty(filter.Phone))
                 {
-                    query = query.Where(c => c.Phone.Contains(phone));
+                    query = query.Where(c => c.Phone.Contains(filter.Phone));
                 }
 
-                if (!string.IsNullOrEmpty(address))
+                if (!string.IsNullOrEmpty(filter.Address))
                 {
-                    query = query.Where(c => c.Address.ToLower().Contains(address.ToLower()));
+                    query = query.Where(c => c.Address.ToLower().Contains(filter.Address.ToLower()));
                 }
 
-                if (createdAt.HasValue)
+                if (filter.CreatedAt.HasValue)
                 {
-                    query = query.Where(c => c.CreatedAt.Date == createdAt.Value.Date);
+                    query = query.Where(c => c.CreatedAt.Date == filter.CreatedAt.Value.Date);
                 }
 
                 var filteredCards = await query.ToListAsync();
@@ -201,10 +254,12 @@ namespace BusinessCardAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while filtering business cards.");
+                var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+                _logger.LogError(ex, "Error occurred while filtering business cards. IP: {IpAddress}, Exception: {Exception}", ipAddress, ex.Message);
                 return StatusCode(500, "Internal server error");
             }
         }
+
 
     }
 }
