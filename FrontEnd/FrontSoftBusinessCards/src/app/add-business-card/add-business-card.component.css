@@ -1,0 +1,99 @@
+body {
+  background-color: #fbf6ef; /* Changed background color */
+  font-family: 'Arial', sans-serif;
+  padding: 2rem;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.container {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.business-card-background {
+  flex: 1;
+  padding: 2rem;
+}
+
+.business-card {
+  background-color: #a3ab94;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(189, 198, 181, 0.5);
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.business-card img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 50%;
+  margin-bottom: 1rem;
+}
+
+.card-details {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  text-align: left;
+}
+
+.form-container {
+  display: flex;
+  flex-direction: column;
+  padding: 2rem;
+  background-color: #a3ab94;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(189, 198, 181, 0.5);
+  width: 100%;
+  max-width: 600px;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+label {
+  font-weight: 600;
+  color: #000000;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+input, select, textarea {
+  padding: 0.75rem;
+  border: 1px solid #f7f2ec;
+  border-radius: 5px;
+  font-size: 1rem;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  width: 100%;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #667058;
+  box-shadow: 0 0 4px rgba(163, 171, 148, 0.25);
+}
+
+button {
+  padding: 0.75rem 1.25rem;
+  font-size: 1rem;
+  border: none;
+  border-radius: 5px;
+  background-color: #667058;
+  color: #fafafa;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+button:hover {
+  background-color: #5E7664;
+  transform: translateY(-2px);
+}

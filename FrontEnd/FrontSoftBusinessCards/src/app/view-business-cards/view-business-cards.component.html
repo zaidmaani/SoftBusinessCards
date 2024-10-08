@@ -1,0 +1,60 @@
+<div class="container">
+    <h2>All Business Cards</h2>
+   <form (ngSubmit)="filterCards()" class="form-inline filter-form">
+    <div class="form-group">
+        <input type="number" [(ngModel)]="filter.Id" name="Id" (input)="filterCards()" placeholder="Filter by Id" class="form-control" />
+    </div> 
+        <div class="form-group">
+            <input type="text" [(ngModel)]="filter.Name" name="Name" (input)="filterCards()" placeholder="Filter by Name" class="form-control" />
+        </div>       
+        <div class="form-group">
+            <input type="text" [(ngModel)]="filter.Gender" name="Gender" (input)="filterCards()" placeholder="Filter by Gender" class="form-control" />
+        </div>
+        <div class="form-group">
+            <input type="text" [(ngModel)]="filter.DateOfBirth" name="DateOfBirth" (input)="filterCards()" placeholder="Filter by DateOfBirth" class="form-control" />
+        </div>
+         <div class="form-group">
+            <input type="text" [(ngModel)]="filter.Email" name="email" (input)="filterCards()" placeholder="Filter by Email" class="form-control" />
+        </div>
+        <div class="form-group">
+            <input type="text" [(ngModel)]="filter.Phone" name="Phone" (input)="filterCards()" placeholder="Filter by Phone" class="form-control" />
+        </div>
+        <div class="form-group">
+            <input type="text" [(ngModel)]="filter.Address" name="Address" (input)="filterCards()" placeholder="Filter by Address" class="form-control" />
+        </div>
+    </form>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Name</th>
+                <th>Gender</th>
+                <th>Date of Birth</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Address</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr *ngFor="let card of filteredCards">
+                <td>{{ card.id }}</td>
+                <td>{{ card.name }}</td>
+                <td>{{ card.gender }}</td>
+                <td>{{ card.dateOfBirth }}</td>
+                <td>{{ card.email }}</td>
+                <td>{{ card.phone }}</td>
+                <td>{{ card.address }}</td>
+                <td>
+                    <button (click)="deleteCard(+card.id)" class="btn btn-danger btn-sm">
+                        Delete
+                    </button>
+                    
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+</div>
+<p-messages [value]="messages" [enableService]="false" [closable]="true" class="custom-messages"></p-messages>
