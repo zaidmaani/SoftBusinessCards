@@ -16,7 +16,7 @@
 
         public string Address { get; set; }
 
-        public string Photo { get; set; }  
+        public string? Photo { get; set; }  
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
     }

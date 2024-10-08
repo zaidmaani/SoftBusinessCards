@@ -7,6 +7,10 @@ using System.Xml.Linq;
 using CsvHelper;
 using System.Drawing;
 using Aspose.BarCode.BarCodeRecognition;
+using ZXing;
+using ZXing.Common;
+using System.Drawing;
+using ZXing.QrCode;
 
 namespace BusinessCardAPI.Controllers
 {
@@ -140,7 +144,6 @@ namespace BusinessCardAPI.Controllers
             }
         }
         //============================================================================//
-
         [HttpPost("ExtractFromQRCode")]
         public async Task<IActionResult> ExtractBusinessCardFromQRCode(IFormFile qrCodeImage)
         {
@@ -153,49 +156,35 @@ namespace BusinessCardAPI.Controllers
                 {
                     await qrCodeImage.CopyToAsync(stream);
 
-                    var bitmap = new Bitmap(stream);
+                     var bitmap = new Bitmap(stream);
 
-                    using (var tempStream = new MemoryStream())
+                     var barcodeReader = new ZXing.Windows.Compatibility.BarcodeReader();   
+
+                     var result = barcodeReader.Decode(bitmap);
+
+                    if (result == null)
+                        return BadRequest("Unable to decode the QR code");
+
+                    var data = result.Text.Split(';');
+                    if (data.Length != 7)
+                        return BadRequest("Invalid data format in QR code");
+
+                     var businessCard = new BusinessCard
                     {
-                        bitmap.Save(tempStream, System.Drawing.Imaging.ImageFormat.Png);
-                        tempStream.Position = 0;
+                        Id = int.Parse(data[0]),
+                        Name = data[1],
+                        Gender = data[2],
+                        DateOfBirth = DateTime.Parse(data[3]),
+                        Email = data[4],
+                        Phone = data[5],
+                        Address = data[6],
+                        CreatedAt = DateTime.Now
+                    };
 
-                        using (BarCodeReader reader = new BarCodeReader(tempStream, DecodeType.QR))
-                        {
-                            var qrCodes = reader.ReadBarCodes();
-                            if (qrCodes.Length == 0)
-                                return BadRequest("Unable to decode the QR code");
+                    _context.BusinessCards.Add(businessCard);
+                    await _context.SaveChangesAsync();
 
-                            List<BusinessCard> businessCards = new List<BusinessCard>();
-
-                            foreach (var qrCode in qrCodes)
-                            {
-                                var data = qrCode.CodeText.Split(';');
-                                if (data.Length != 8)
-                                    return BadRequest("Invalid data format in QR code");
-
-                                var businessCard = new BusinessCard
-                                {
-                                    Id = int.Parse(data[0]),
-                                    Name = data[1],
-                                    Gender = data[2],
-                                    DateOfBirth = DateTime.Parse(data[3]),
-                                    Email = data[4],
-                                    Phone = data[5],
-                                    Address = data[6],
-                                    Photo = data[7],
-                                    CreatedAt = DateTime.Now
-                                };
-
-                                businessCards.Add(businessCard);
-                            }
-
-                            _context.BusinessCards.AddRange(businessCards);
-                            await _context.SaveChangesAsync();
-
-                            return Ok(businessCards);
-                        }
-                    }
+                    return Ok(businessCard);
                 }
             }
             catch (Exception ex)
