@@ -33,18 +33,36 @@ namespace BusinessCardAPI.Controllers
         {
             try
             {
-                if (ModelState.IsValid)
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
+
+                var existingCard = await _context.BusinessCards.FindAsync(card.Id);
+
+                if (existingCard != null)
                 {
-                    _context.BusinessCards.Add(card);
-                    await _context.SaveChangesAsync();
-                    return CreatedAtAction(nameof(ViewBusinessCards), new { id = card.Id }, card);
+                     existingCard.Name = card.Name;
+                    existingCard.Gender = card.Gender;
+                    existingCard.DateOfBirth = card.DateOfBirth;
+                    existingCard.Email = card.Email;
+                    existingCard.Phone = card.Phone;
+                    existingCard.Address = card.Address;
+                    existingCard.Photo = card.Photo;
+
+                    _context.BusinessCards.Update(existingCard);
                 }
-                return BadRequest(ModelState);
+                else
+                {
+                     _context.BusinessCards.Add(card);
+                }
+
+                await _context.SaveChangesAsync();
+
+                return CreatedAtAction(nameof(ViewBusinessCards), new { id = card.Id }, card);
             }
             catch (Exception ex)
             {
                 var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-                _logger.LogError(ex, "Error occurred while creating business card. IP: {IpAddress}, Exception: {Exception}", ipAddress, ex.Message);
+                _logger.LogError(ex, "Error occurred while creating or updating business card. IP: {IpAddress}, Exception: {Exception}", ipAddress, ex.Message);
                 return StatusCode(500, "Internal server error");
             }
         }
@@ -108,10 +126,32 @@ namespace BusinessCardAPI.Controllers
                     using (var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
                     {
                         csv.Context.TypeConverterOptionsCache.GetOptions<DateTime>()
-                   .Formats = new[] { "yyyy-MM-ddTHH:mm:ss", "MM/dd/yyyy", "M/d/yyyy" };
+                           .Formats = new[] { "yyyy-MM-ddTHH:mm:ss", "MM/dd/yyyy", "M/d/yyyy" };
 
-                        var records = csv.GetRecords<BusinessCard>();
-                        businessCards.AddRange(records);
+                        var records = csv.GetRecords<BusinessCard>().ToList();
+
+                        foreach (var card in records)
+                        {
+                            var existingCard = await _context.BusinessCards
+                                .FirstOrDefaultAsync(b => b.Id == card.Id);
+
+                            if (existingCard != null)
+                            {
+                                existingCard.Name = card.Name;
+                                existingCard.Gender = card.Gender;
+                                existingCard.DateOfBirth = card.DateOfBirth;
+                                existingCard.Email = card.Email;
+                                existingCard.Phone = card.Phone;
+                                existingCard.Address = card.Address;
+                                existingCard.Photo = card.Photo;
+                            }
+                            else
+                            {
+                                _context.BusinessCards.Add(card);
+                            }
+
+                            businessCards.Add(card);  
+                        }
                     }
                 }
                 else if (extension == ".xml")
@@ -129,9 +169,31 @@ namespace BusinessCardAPI.Controllers
                             Address = (string)x.Element("Address"),
                             Photo = (string)x.Element("Photo")
                         }).ToList();
-                    businessCards.AddRange(records);
+
+                    foreach (var card in records)
+                    {
+                        var existingCard = await _context.BusinessCards
+                            .FirstOrDefaultAsync(b => b.Id == card.Id);
+
+                        if (existingCard != null)
+                        {
+                            existingCard.Name = card.Name;
+                            existingCard.Gender = card.Gender;
+                            existingCard.DateOfBirth = card.DateOfBirth;
+                            existingCard.Email = card.Email;
+                            existingCard.Phone = card.Phone;
+                            existingCard.Address = card.Address;
+                            existingCard.Photo = card.Photo;
+                        }
+                        else
+                        {
+                            _context.BusinessCards.Add(card);
+                        }
+
+                        businessCards.Add(card);  
+                    }
                 }
-                _context.BusinessCards.AddRange(businessCards);
+
                 await _context.SaveChangesAsync();
 
                 return Ok(businessCards);
@@ -214,11 +276,9 @@ namespace BusinessCardAPI.Controllers
                 {
                     await qrCodeImage.CopyToAsync(stream);
 
-                     var bitmap = new Bitmap(stream);
-
-                     var barcodeReader = new ZXing.Windows.Compatibility.BarcodeReader();   
-
-                     var result = barcodeReader.Decode(bitmap);
+                    var bitmap = new Bitmap(stream);
+                    var barcodeReader = new ZXing.Windows.Compatibility.BarcodeReader();
+                    var result = barcodeReader.Decode(bitmap);
 
                     if (result == null)
                         return BadRequest("Unable to decode the QR code");
@@ -227,22 +287,41 @@ namespace BusinessCardAPI.Controllers
                     if (data.Length != 7)
                         return BadRequest("Invalid data format in QR code");
 
-                     var businessCard = new BusinessCard
-                    {
-                        Id = int.Parse(data[0]),
-                        Name = data[1],
-                        Gender = data[2],
-                        DateOfBirth = DateTime.Parse(data[3]),
-                        Email = data[4],
-                        Phone = data[5],
-                        Address = data[6],
-                        CreatedAt = DateTime.Now
-                    };
+                    var cardId = int.Parse(data[0]);
+                    var businessCard = await _context.BusinessCards.FindAsync(cardId);
 
-                    _context.BusinessCards.Add(businessCard);
+                    if (businessCard != null)
+                    {
+                         businessCard.Name = data[1];
+                        businessCard.Gender = data[2];
+                        businessCard.DateOfBirth = DateTime.Parse(data[3]);
+                        businessCard.Email = data[4];
+                        businessCard.Phone = data[5];
+                        businessCard.Address = data[6];
+                        businessCard.CreatedAt = DateTime.Now;
+
+                        _context.BusinessCards.Update(businessCard);
+                    }
+                    else
+                    {
+                         businessCard = new BusinessCard
+                        {
+                            Id = cardId,
+                            Name = data[1],
+                            Gender = data[2],
+                            DateOfBirth = DateTime.Parse(data[3]),
+                            Email = data[4],
+                            Phone = data[5],
+                            Address = data[6],
+                            CreatedAt = DateTime.Now
+                        };
+
+                        _context.BusinessCards.Add(businessCard);
+                    }
+
                     await _context.SaveChangesAsync();
 
-                    return Ok(businessCard);
+                    return Ok(new[] { businessCard });
                 }
             }
             catch (Exception ex)
@@ -252,6 +331,7 @@ namespace BusinessCardAPI.Controllers
                 return StatusCode(500, "Internal server error");
             }
         }
+
         //==============================================================================//
 
         [HttpGet("Filter")]
