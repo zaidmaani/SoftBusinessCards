@@ -6,11 +6,11 @@ using System.Globalization;
 using System.Xml.Linq;
 using CsvHelper;
 using System.Drawing;
-using Aspose.BarCode.BarCodeRecognition;
 using ZXing;
 using ZXing.Common;
 using System.Drawing;
 using ZXing.QrCode;
+using System.Text;
 
 namespace BusinessCardAPI.Controllers
 {
@@ -143,6 +143,64 @@ namespace BusinessCardAPI.Controllers
                 return StatusCode(500, "Internal server error");
             }
         }
+        //============================================================================//
+
+        [HttpGet("ExportBusinessCard")]
+        public async Task<IActionResult> ExportBusinessCard(int id, string format)
+        {
+            try
+            {
+                 var businessCards = await _context.BusinessCards
+                    .Where(bc => bc.Id == id)
+                    .ToListAsync();
+
+                if (businessCards == null || businessCards.Count == 0)
+                    return NotFound($"No business card found with ID: {id}");
+
+                 if (format.ToLower() == "csv")
+                {
+                     var csvContent = new StringWriter();
+                    using (var csvWriter = new CsvWriter(csvContent, CultureInfo.InvariantCulture))
+                    {
+                        csvWriter.WriteRecords(businessCards);
+                    }
+
+                     var bytes = Encoding.UTF8.GetBytes(csvContent.ToString());
+                    return File(bytes, "text/csv", $"BusinessCard_{id}.csv");
+                }
+                else if (format.ToLower() == "xml")
+                {
+                     var xmlDocument = new XDocument(
+                        new XElement("BusinessCards",
+                            businessCards.Select(bc => new XElement("BusinessCard",
+                                new XElement("Id", bc.Id),
+                                new XElement("Name", bc.Name),
+                                new XElement("Gender", bc.Gender),
+                                new XElement("DateOfBirth", bc.DateOfBirth.ToString("yyyy-MM-ddTHH:mm:ss")),
+                                new XElement("Email", bc.Email),
+                                new XElement("Phone", bc.Phone),
+                                new XElement("Address", bc.Address),
+                                new XElement("Photo", bc.Photo)
+                            ))
+                        )
+                    );
+
+                     var xmlBytes = Encoding.UTF8.GetBytes(xmlDocument.ToString());
+                    return File(xmlBytes, "application/xml", $"BusinessCard_{id}.xml");
+                }
+                else
+                {
+                    return BadRequest("Unsupported format. Please use 'csv' or 'xml'.");
+                }
+            }
+            catch (Exception ex)
+            {
+                var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+                _logger.LogError(ex, "Error occurred while exporting business card. IP: {IpAddress}, Exception: {Exception}", ipAddress, ex.Message);
+                return StatusCode(500, "Internal server error");
+            }
+        }
+
         //============================================================================//
         [HttpPost("ExtractFromQRCode")]
         public async Task<IActionResult> ExtractBusinessCardFromQRCode(IFormFile qrCodeImage)
