@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SoftBusinessCards.Data;
@@ -11,9 +12,10 @@ using SoftBusinessCards.Data;
 namespace SoftBusinessCards.Migrations
 {
     [DbContext(typeof(BusinessCardContext))]
-    partial class BusinessCardContextModelSnapshot : ModelSnapshot
+    [Migration("20241008224344_UpdateBusinessCardModel")]
+    partial class UpdateBusinessCardModel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -53,10 +55,10 @@ namespace SoftBusinessCards.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("Phone")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<string>("Photo")
+                        .IsRequired()
                         .HasColumnType("text");
 
                     b.HasKey("Id");
