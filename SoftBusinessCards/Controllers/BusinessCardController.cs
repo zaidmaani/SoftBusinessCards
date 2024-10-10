@@ -283,6 +283,9 @@ namespace BusinessCardAPI.Controllers
                     if (result == null)
                         return BadRequest("Unable to decode the QR code");
 
+                    if (string.IsNullOrEmpty(result.Text))
+                        return BadRequest("QR code does not contain valid data");
+
                     var data = result.Text.Split(';');
                     if (data.Length != 7)
                         return BadRequest("Invalid data format in QR code");
