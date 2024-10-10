@@ -45,10 +45,23 @@
                 </div>
                 <div class="form-group col-sm-6">
                     <label for="Photo">Upload Photo (Max 1MB):</label>
-                    <input type="file" (change)="onFileChange($event)" />
+                    <input type="file" (change)="onFileChange($event)" style="background-color: #667058; color: white;" />
                 </div>
             </div>
-
+            <div class="row">
+                <div class="form-group col-sm-4">
+                    <label for="FileUploadXml">Upload XML File:</label>
+                    <input type="file" id="FileUploadXml" accept=".xml" (change)="onFileChangeXml($event)" style="background-color: #667058; color: white;" />
+                </div>
+                <div class="form-group col-sm-4">
+                    <label for="FileUploadCsv">Upload CSV File:</label>
+                    <input type="file" id="FileUploadCsv" accept=".csv" (change)="onFileChangeCsv($event)" style="background-color: #667058; color: white;" />
+                </div>
+                <div class="form-group col-sm-4">
+                    <label for="QrCodeUpload">Upload QRCode:</label>
+                    <input type="file" id="QrCodeUpload" accept="image/*" (change)="onFileChangeQrCode($event)" style="background-color: #667058; color: white;" />
+                </div>
+            </div>
             
             <div class="row">
                 <div class="form-group col-sm-12 text-center">

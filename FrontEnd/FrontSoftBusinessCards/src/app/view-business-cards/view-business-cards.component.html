@@ -50,6 +50,12 @@
                     <button (click)="deleteCard(+card.id)" class="btn btn-danger btn-sm">
                         Delete
                     </button>
+                    <button (click)="exportCard(card.id, 'xml')" class="btn btn-success btn-sm">
+                        Export XML
+                    </button>
+                    <button (click)="exportCard(card.id, 'csv')" class="btn btn-info btn-sm">
+                        Export CSV
+                    </button>
                     
                 </td>
             </tr>
